@@ -3,5 +3,5 @@ uvicorn
 sqlalchemy
 pymysql
 boto3
-logging
-```
+asyncio
+botocore

@@ -2,17 +2,46 @@ from fastapi import FastAPI, HTTPException
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
-import logging
 import boto3
-from botocore.exceptions import NoCredentialsError
+import os
+import asyncio
+import logging
 import time
+from botocore.exceptions import ClientError, NoCredentialsError
+from contextlib import asynccontextmanager
+
 app = FastAPI()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 
+async def get_secret():
+    secret_name = "app/mysql/credentials"
+    region_name = "us-east-1"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    loop = asyncio.get_running_loop()
+
+    try:
+        # Unpack the dictionary into keyword arguments
+        get_secret_value_response = await loop.run_in_executor(
+            None,  # Uses the default executor
+            lambda: client.get_secret_value(SecretId=secret_name)
+        )
+    except ClientError as e:
+        raise e
+
+    # Decrypts secret using the associated KMS key.
+    secret = get_secret_value_response['SecretString']
+
+    return eval(secret)
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -69,7 +98,7 @@ async def create_item(name: str, description: str):
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
-    await push_logs_to_cloudwatch(f"Create items with name {Item.name} and description {Item.description}")
+    await push_logs_to_cloudwatch(f"Create items with name {name} and description {description}")
     return new_item
 
 @app.get("/items/")
