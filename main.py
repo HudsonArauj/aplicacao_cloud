@@ -7,12 +7,8 @@ import os
 
 app = FastAPI()
 
-# Leia a variável de ambiente DATABASE_URL
-database_url = os.environ.get("DATABASE_URL")
-if database_url is None:
-    raise Exception("DATABASE_URL not set in environment variables")
-
-engine = create_engine(database_url)
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 
 class Item(Base):
@@ -23,7 +19,11 @@ class Item(Base):
 SessionLocal = sessionmaker(bind=engine)
 
 Base.metadata.create_all(bind=engine)
-print("Database initialized")
+
+@app.get("/healthcheck")
+def healthcheck():
+    return {"status": "ok"}
+
 @app.post("/items/")
 def create_item(name: str, description: str):
     db = SessionLocal()
