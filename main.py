@@ -16,32 +16,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 
-async def get_secret():
-    secret_name = "app/mysql/credentials"
-    region_name = "us-east-1"
 
-    # Create a Secrets Manager client
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-
-    loop = asyncio.get_running_loop()
-
-    try:
-        # Unpack the dictionary into keyword arguments
-        get_secret_value_response = await loop.run_in_executor(
-            None,  # Uses the default executor
-            lambda: client.get_secret_value(SecretId=secret_name)
-        )
-    except ClientError as e:
-        raise e
-
-    # Decrypts secret using the associated KMS key.
-    secret = get_secret_value_response['SecretString']
-
-    return eval(secret)
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
